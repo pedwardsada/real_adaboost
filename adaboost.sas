@@ -296,7 +296,7 @@ quit;
 %let nscore=%sysfunc( countw( &data.,,s ) );
 %do j=1 %to &nscore;
     %let d=%scan( &data, &j,, s );
-		%IF %SYSFUNC(EXIST(&d.))=0 %THEN %DO; /* EXIST() RETURNS 1! */
+		%IF %SYSFUNC(EXIST(&d.))=0 and %SYSFUNC(EXIST(&d.,VIEW))=0 %THEN %DO; /* EXIST() RETURNS 1! */
 	    %PUT ERROR: &d. DOES NOT EXIST;
 	    %GOTO errhandle;
 	%END;
