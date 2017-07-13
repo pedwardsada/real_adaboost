@@ -436,9 +436,8 @@ quit;
 	PROC ARBORETUM INMODEL=tr ;
 		save model=_tmpmdl;
 	RUN;
-	%makegv(tree=_tmpmdl, outfile=&prefix.&ipad..gv, subtree=BEST)
+	%makegv(tree=_tmpmdl, outfile=&prefix.&ipad..gv, subtree=BEST,train=&train, target=&target)
 %end;
-
 %errhandle:
 %mend;
 

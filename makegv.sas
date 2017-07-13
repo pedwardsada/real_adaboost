@@ -14,7 +14,7 @@
 proc arboretum inmodel=&tree ;
     SAVE nodestat=_TMPNODE path=_tmpp rules=_tmpr;
     SUBTREE &subtree; /* BEST|LARGEST - see arboretum doc: http://support.sas.com/documentation/onlinedoc/miner/em43/allproc.pdf*/
-	code file='/tmp/treerule.txt';
+	code file='/tmp/treerule.txt' nodummy noprediction;
 RUN;
 
 /* GET THE PREDICTED VALUE OF EACH LEAF FROM THE ARBOR OBJECT */
@@ -35,6 +35,34 @@ data _null_;
         set _targetvar (obs=1); /* preferentially select the name that ends with a 1 */
         call symput ("pvar",upcase(strip(name)));
 run;
+
+%IF %LENGTH(&train)>0 %THEN %DO;
+	PROC SQL NOPRINT;
+		SELECT DISTINCT CHARACTER_VALUE into :c separated by ' '
+		FROM _TMPR
+		WHERE STAT='VARIABLE';
+	QUIT;
+	data _t;
+		set &train(keep=&target &c); /* debug hardcode fixme */
+		%include '/tmp/treerule.txt';
+	run;
+
+	proc means noprint data=_t;
+		class _node_;
+		var &target; 
+		output sum=s out=ax;
+	run;
+	proc sql;
+		create table _z as
+		select a.node, cats('N: ',b._FREQ_) as nodetext,a.depth, a.parent, a.branch, a.BELOWTEXT, a.ABOVETEXT, a.leaf, b.s/b._freq_ as &pvar
+		from _tmpnode as a 
+		left join ax as b
+		on a.node=b._node_;
+	quit;
+	data _tmpnode;
+		set _z;
+	run;
+%END;
 
 /*******************************************************/
 
