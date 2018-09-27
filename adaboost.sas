@@ -495,46 +495,55 @@ run;
 
 
 %macro weightedsplit(data=,frac=&samplprop,s=&seed,weight=);
-
 /* 
 DataA is the whole data set, with a frq variable taking a _weighted_ &frac percent of the data
-
 DataB is the (1-&frac) percent only with no frq (but duplicated records)
 */
 
 proc sql noprint;
 select count(*) into :nn separated by '' from &data;
+select sum( &weight ) into :sw from &data;
 quit;
 
-proc iml;
-	use &data ;
-	read all ;
-	call randseed(&seed.); 
-	frq=RANDMULTINOMIAL( 1, floor(&nn * &frac) , &weight/sum(&weight) );
-	u = j(1);
- 	call randgen(u, "Uniform", 1, 9999999999+1);
- 	call symput( "seed", char( floor(u) )); /* set new seed based on old seed */
-	create &data.A var _all_ ;
-	append ;
-	close &data.A;
-quit;
+*Follows Algorithm 5.1 in : http://statweb.stanford.edu/~owen/mc/Ch-randvectors.pdf ;
+data &data.A (compress=binary);
+set &data end=last;
+call streaminit(123);
+retain l s;
+if _n_=1 then do;
+	l=floor(&nn * &frac);
+	s=1;
+end;
+if last then frq=l;
+else frq=rand('binomial', min((&weight / &sw)/s,1) , l);
+l= l-frq;
+s=max(0,s- (&weight / &sw));
+run;
 
 %if &frac >= 1 %then %goto bye;
 
-proc iml;
-	use &data.A where(frq=0);
-	read all ;
-	call randseed(&seed.); 
-	frq=RANDMULTINOMIAL( 1, floor(&nn * (1-&frac)) , &weight/sum(&weight) );
-	u = j(1);
- 	call randgen(u, "Uniform", 1, 9999999999+1);
- 	call symput( "seed", char( floor(u) )); /* set new seed based on old seed */
-	create B var _all_ ;
-	append ;
-	close B;
+*The total weights normalized based on data with frq=0;
+proc sql noprint;
+select sum( &weight ) into :swB from &data.A
+ where frq=0;
 quit;
 
-data &data.B;
+data B(compress=binary);
+set &data.A end=last;
+where frq=0;
+call streaminit(123);
+retain l s;
+if _n_=1 then do;
+	l=floor(&nn * (1-&frac));
+	s=1;
+end;
+if last then frq=l;
+else frq=rand('binomial', min((&weight / &swB)/s,1) , l);
+  l= l-frq;
+  s=max(0,s- (&weight / &swB));
+run;
+
+data &data.B(compress=binary);
 set B;
 if frq=0 then delete;
 do i=1 to frq;
