@@ -1,4 +1,4 @@
-%macro makegv(tree, outfile=test.gv, subtree=BEST);
+%macro makegv(tree, outfile=test.gv, subtree=BEST,train=,target=);
 
 /*
 
