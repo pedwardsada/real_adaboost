@@ -452,7 +452,7 @@ Totally rough approx of importance
 %END;
 
 proc datasets nodetails nolist;
-delete adaimp;
+delete adaimp _tmpimp2;
 run;
 
 proc sql noprint;
